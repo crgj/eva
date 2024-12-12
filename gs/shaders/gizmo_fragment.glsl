@@ -17,6 +17,6 @@ void main() {
         const float thickness = .03;
         float d =  smoothstep(0., thickness, abs(fract(coord.x * 60.) - .5));
         d = min(d, smoothstep(0., thickness, abs(fract(coord.y * 60.) - .5)));
-        fragColor = vec4(1, 0, 0, 1. - d);
+        fragColor = vec4(0.8, 0.8, 0.8, 1. - d);
     }
 }

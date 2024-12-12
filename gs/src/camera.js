@@ -1,13 +1,13 @@
 const { mat4, vec3, vec4 } = glMatrix
 
 class Camera {
-    constructor({target = [0, 0, 0], up = [0, 1, 0], camera = [], defaultCameraMode} = {}) {
+    constructor({ target = [0, 0, 0], up = [0, 1, 0], camera = [], defaultCameraMode } = {}) {
         this.target = [...target] // Position of look-at target
         this.up = [...up]         // Up vector
 
         // Camera spherical coordinates (around the target)
-        this.theta  = camera[0] ?? -Math.PI/2
-        this.phi    = camera[1] ?? Math.PI/2
+        this.theta = camera[0] ?? -Math.PI / 2
+        this.phi = camera[1] ?? Math.PI / 2
         this.radius = camera[2] ?? 3
 
         // Y Field of view
@@ -43,7 +43,7 @@ class Camera {
         // Helper vectors
         this.pos = vec3.create()
         this.front = vec3.create()
-        this.right = vec3.create()        
+        this.right = vec3.create()
 
         // Helper matrices
         this.viewMatrix = mat4.create()
@@ -95,7 +95,8 @@ class Camera {
 
         // Zoom in and out
         gl.canvas.addEventListener('wheel', e => {
-            if (this.freeFly || this.disableMovement) return
+            //if (this.freeFly || this.disableMovement) return
+            if (this.disableMovement) return
 
             this.radius = Math.max(1, this.radius + e.deltaY * 0.01)
 
@@ -104,13 +105,13 @@ class Camera {
 
         // Free-fly movement
         document.addEventListener('keydown', e => {
-            if (!this.freeFly || this.disableMovement || this.keyStates[e.code] == null) 
+            if (!this.freeFly || this.disableMovement || this.keyStates[e.code] == null)
                 return
             this.keyStates[e.code] = true
         })
 
         document.addEventListener('keyup', e => {
-            if (!this.freeFly || this.disableMovement || this.keyStates[e.code] == null) 
+            if (!this.freeFly || this.disableMovement || this.keyStates[e.code] == null)
                 return
             this.keyStates[e.code] = false
         })
@@ -127,20 +128,52 @@ class Camera {
         })
 
         // Update camera from mouse and keyboard inputs
-        setInterval(this.updateKeys.bind(this), 1000/60)
+        setInterval(this.updateKeys.bind(this), 1000 / 60)
     }
 
     // Reset parameters on new scene load
-    setParameters({target = [0, 0, 0], up = [0, 1, 0], camera = [], defaultCameraMode} = {}) {
+    setParameters({ target = [0, 0, 0], up = [0, 1, 0], camera = [], defaultCameraMode } = {}) {
         this.target = [...target]
         this.up = [...up]
-        this.theta  = camera[0] ?? -Math.PI/2
-        this.phi    = camera[1] ?? Math.PI/2
+        this.theta = camera[0] ?? -Math.PI / 2
+        this.phi = camera[1] ?? Math.PI / 2
         this.radius = camera[2] ?? 3
         this.freeFly = settings.freeFly = defaultCameraMode !== 'orbit'
         this.needsWorkerUpdate = true
         this.sceneRotationMatrix = rotateAlign(this.up, [0, 1, 0])
         camController.resetCalibration()
+    }
+
+
+    // 设置摄像机的位置并计算视图矩阵
+    setCameraPose(cameraPos, lookAtPos, upVector = [0, 1, 0]) {
+
+        // 计算目标点和相机之间的向量
+        let dir = [
+            lookAtPos[0] - cameraPos[0],
+            lookAtPos[1] - cameraPos[1],
+            lookAtPos[2] - cameraPos[2]
+        ];
+
+        // 计算相机与目标点之间的距离，作为radius
+        const radius = Math.sqrt(dir[0] ** 2 + dir[1] ** 2 + dir[2] ** 2);
+        
+        // 计算theta和phi
+        const theta = Math.atan2(dir[0], dir[2]);  // 水平角度
+        const phi = Math.acos(dir[1] / radius);  // 垂直角度
+
+
+        //console.log('radius',radius)
+        // 调用setParameters函数，设置相机参数
+        this.setParameters({
+            target: lookAtPos,  // 目标点
+            up: upVector,       // 向上方向
+            camera: [theta, phi, radius],  // 相机的theta, phi和radius
+            defaultCameraMode:settings.freeFly
+        });
+
+
+
     }
 
     updateKeys() {
@@ -170,14 +203,16 @@ class Camera {
     }
 
     getFront() {
-        const front = vec3.subtract(this.front, [0,0,0], this.getPos())
+        const front = vec3.subtract(this.front, [0, 0, 0], this.getPos())
         vec3.normalize(front, front)
         return front
     }
 
     update() {
         // Update current position
-        vec3.add(this.pos, this.target, this.getPos(this.freeFly ? 1 : this.radius))
+        //vec3.add(this.pos, this.target, this.getPos(this.freeFly ? 1 : this.radius))
+        vec3.add(this.pos, this.target, this.getPos(this.radius))
+
 
         // Create a lookAt view matrix
         mat4.lookAt(this.viewMatrix, this.pos, this.target, this.up)
@@ -186,7 +221,7 @@ class Camera {
         const aspect = gl.canvas.width / gl.canvas.height
         mat4.perspective(this.projMatrix, this.fov_y, aspect, 0.1, 100)
 
-		// Convert view and projection to target coordinate system
+        // Convert view and projection to target coordinate system
         // Original C++ reference: https://gitlab.inria.fr/sibr/sibr_core/-/blob/gaussian_code_release_union/src/projects/gaussianviewer/renderer/GaussianView.cpp#L464
         mat4.copy(this.vm, this.viewMatrix)
         mat4.multiply(this.vpm, this.projMatrix, this.viewMatrix)
@@ -205,9 +240,9 @@ class Camera {
     updateWorker() {
         // Calculate the dot product between last and current view-projection matrices
         // If they differ too much, the splats need to be sorted
-        const dot = this.lastViewProjMatrix[2]  * this.vpm[2] 
-                  + this.lastViewProjMatrix[6]  * this.vpm[6]
-                  + this.lastViewProjMatrix[10] * this.vpm[10]
+        const dot = this.lastViewProjMatrix[2] * this.vpm[2]
+            + this.lastViewProjMatrix[6] * this.vpm[6]
+            + this.lastViewProjMatrix[10] * this.vpm[10]
         if (Math.abs(dot - 1) > 0.01) {
             this.needsWorkerUpdate = true
             mat4.copy(this.lastViewProjMatrix, this.vpm)
@@ -218,7 +253,7 @@ class Camera {
             this.needsWorkerUpdate = false
             isWorkerSorting = true
             worker.postMessage({
-                viewMatrix:  this.vpm, 
+                viewMatrix: this.vpm,
                 maxGaussians: settings.maxGaussians,
                 sortingAlgorithm: settings.sortingAlgorithm
             })
@@ -227,7 +262,7 @@ class Camera {
 
     raycast(x, y) {
         if (this.calibrationPoints.length >= 3) return
-        
+
         // Calculate ray direction from mouse position
         const Px = (x / window.innerWidth * 2 - 1)
         const Py = -(y / window.innerHeight * 2 - 1)
@@ -267,8 +302,10 @@ class Camera {
 
     resetCalibration() {
         this.isCalibrating = false
-        this.calibrationPoints = []
-        gizmoRenderer.setPlaneVertices()
+        this.calibrationPoints = [] 
+        gizmoRenderer.setPlaneVertices( [-1,0,0],
+                                        [1,0,0],
+                                        [0,0,1])
     }
 
     finishCalibration() {
@@ -291,20 +328,20 @@ const invertRow = (mat, row) => {
 // https://gist.github.com/kevinmoran/b45980723e53edeb8a5a43c49f134724
 function rotateAlign(v1, v2) {
     const axis = [
-      v1[1] * v2[2] - v1[2] * v2[1],
-      v1[2] * v2[0] - v1[0] * v2[2],
-      v1[0] * v2[1] - v1[1] * v2[0]
+        v1[1] * v2[2] - v1[2] * v2[1],
+        v1[2] * v2[0] - v1[0] * v2[2],
+        v1[0] * v2[1] - v1[1] * v2[0]
     ]
 
     const cosA = v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]
     const k = 1.0 / (1.0 + cosA)
-  
+
     const result = [
-      (axis[0] * axis[0] * k) + cosA, (axis[1] * axis[0] * k) - axis[2], (axis[2] * axis[0] * k) + axis[1],
-      (axis[0] * axis[1] * k) + axis[2], (axis[1] * axis[1] * k) + cosA, (axis[2] * axis[1] * k) - axis[0],
-      (axis[0] * axis[2] * k) - axis[1], (axis[1] * axis[2] * k) + axis[0], (axis[2] * axis[2] * k) + cosA
+        (axis[0] * axis[0] * k) + cosA, (axis[1] * axis[0] * k) - axis[2], (axis[2] * axis[0] * k) + axis[1],
+        (axis[0] * axis[1] * k) + axis[2], (axis[1] * axis[1] * k) + cosA, (axis[2] * axis[1] * k) - axis[0],
+        (axis[0] * axis[2] * k) - axis[1], (axis[1] * axis[2] * k) + axis[0], (axis[2] * axis[2] * k) + cosA
     ]
-  
+
     return result
 }
 

@@ -10,12 +10,16 @@ let renderTimeout = null
 let gaussianCount
 let sceneMin, sceneMax
 
+let backgroundRenderer=new BackgroundRenderer()
 let gizmoRenderer = new GizmoRenderer()
 let positionBuffer, positionData, opacityData
+ 
+
+ 
 
 const settings = {
     scene: 'room',
-    renderResolution: 0.2,
+    renderResolution: 0.5,
     maxGaussians: 1e6,
     scalingModifier: 1,
     sortingAlgorithm: 'count sort',
@@ -37,23 +41,17 @@ const defaultCameraParameters = {
     'room': {
         up: [0, 1, 0],
         target: [0, 0, 0],
+        camera: [Math.PI/4, -Math.PI/2, 0.01],
+        defaultCameraMode: 'freefly',
+        size: '270mb'
+    } ,
+    'room1': {
+        up: [0, 1, 0],
+        target: [0, 0, 0],
         camera: [Math.PI/4, Math.PI/2, 0.01],
         defaultCameraMode: 'freefly',
         size: '270mb'
-    },
-    'building': {
-        up: [0, 0.968912, 0.247403],
-        target: [-0.262075, 0.76138, 1.27392],
-        camera: [ -1.1807959999999995, 1.8300000000000007, 3.99],
-        defaultCameraMode: 'orbit',
-        size: '326mb'
-    },
-    'garden': {
-        up: [0.055540, 0.928368, 0.367486],
-        target: [0.338164, 1.198655, 0.455374],
-        defaultCameraMode: 'orbit',
-        size: '1.07gb [!]'
-    }
+    } 
 }
 
 async function main() {
@@ -67,16 +65,20 @@ async function main() {
         throw new Error('Could not initialize WebGL')
     }
 
+    // 创建多线程worker
     // Setup web worker for multi-threaded sorting
-    worker = new Worker('src/worker-sort.js')
+    worker = new Worker('./gs/src/worker-sort.js')
 
+    //设置onmessage的回调函数，主线程执行
     // Event that receives sorted gaussian data from the worker
     worker.onmessage = e => {
         const { data, sortTime } = e.data
 
-        if (getComputedStyle(document.querySelector('#loading-container')).opacity != 0) {
-            document.querySelector('#loading-container').style.opacity = 0
-            cam.disableMovement = false
+        if (getComputedStyle(document.querySelector('#loading-container')).opacity != 0) { 
+            setTimeout(() => {
+                document.querySelector('#loading-container').style.opacity = 0;
+                cam.disableMovement = false;
+            }, 3000); // 等待3秒 (1000毫秒)
         }
 
         const updateBuffer = (buffer, data) => {
@@ -106,7 +108,8 @@ async function main() {
 
     // Setup gizmo renderer
     await gizmoRenderer.init()
-
+    await backgroundRenderer.init()
+    
     // Load the default scene
     await loadScene({ scene: settings.scene })
 }
@@ -154,6 +157,20 @@ async function loadScene({scene, file}) {
     const cameraParameters = scene ? defaultCameraParameters[scene] : {}
     if (cam == null) cam = new Camera(cameraParameters)
     else cam.setParameters(cameraParameters)
+
+ 
+    //console.log(cameraParameters)
+    //1设置摄像机位置
+
+ 
+
+    cam.setCameraPose(
+        [10, 10, 10],          // 摄像机位置
+        [0, 0, 0],          // 摄像机注视的目标
+        [0, 1, 0]           // 上向量
+    );
+
+
     cam.update()
 
     // Update GUI
@@ -168,7 +185,7 @@ function requestRender(...params) {
 
     renderFrameRequest = requestAnimationFrame(() => render(...params)) 
 }
-
+ 
 // Render a frame on the canvas
 function render(width, height, res) {
     // Update canvas size
@@ -181,15 +198,27 @@ function render(width, height, res) {
         gl.canvas.height = canvasHeight
     }
 
-    // Setup viewport
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
-    gl.clearColor(0, 0, 0, 0)
-    gl.clear(gl.COLOR_BUFFER_BIT)
-    gl.useProgram(program)
-
     // Update camera
     cam.update()
 
+    
+
+    // Setup viewport
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
+    gl.clearColor(0, 0, 0, 0)
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+    gl.enable(gl.DEPTH_TEST);  // 启用深度测试
+    gl.depthFunc(gl.LESS);     // 设置深度测试的函数，LESS 表示渲染深度较小的物体
+   
+    gl.useProgram(program)
+
+
+    
+
+    
+
+    
     // Original implementation parameters
     const W = gl.canvas.width
     const H = gl.canvas.height
@@ -213,11 +242,33 @@ function render(width, height, res) {
     // Custom parameters
     gl.uniform1i(gl.getUniformLocation(program, 'show_depth_map'), settings.debugDepth)
 
-    // Draw
-    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, settings.maxGaussians)
+    //===================================================================================
+    // Draw 
+    //第一次渲染，不写入深度
+    gl.depthMask(false); // 禁用深度写入
+    // 渲染透明物体
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, settings.maxGaussians);
+    
 
+    //第二次渲染，写入深度
+    gl.depthMask(true);  // 恢复深度写入
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, settings.maxGaussians)
+    //===================================================================================
+ 
+
+    
     // Draw gizmo
+    
+    //gl.depthMask(true);  // 恢复深度写入
+
     gizmoRenderer.render()
+
+    
+    //backgroundRenderer.render()
+
+
+
+
 
     renderFrameRequest = null
 

@@ -8,8 +8,8 @@ async function setupWebglContext() {
     resizeObserver.observe(canvas, {box: 'content-box'})
 
     // Load shaders
-    const vertexShaderSource = await fetchFile('shaders/splat_vertex.glsl')
-    const fragmentShaderSource = await fetchFile('shaders/splat_fragment.glsl')
+    const vertexShaderSource = await fetchFile('gs/shaders/splat_vertex.glsl')
+    const fragmentShaderSource = await fetchFile('gs/shaders/splat_fragment.glsl')
 
     // Create shader program
     const program = createProgram(gl, vertexShaderSource, fragmentShaderSource)

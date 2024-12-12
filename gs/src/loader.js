@@ -12,7 +12,7 @@ async function loadPly(content) {
     const match = header.match(regex)
     gaussianCount = parseInt(match[1])
 
-    document.querySelector('#loading-text').textContent = `Success. Initializing ${gaussianCount} gaussians...`
+    document.querySelector('#loading-text').textContent = `Success`
 
     // Create arrays for gaussian properties
     const positions = []
@@ -110,8 +110,7 @@ async function loadPly(content) {
         const cov3D = computeCov3D(scale, 1, rotation)
         cov3Ds.push(...cov3D)
         // rotations.push(...rotation)
-        // scales.push(...scale)
-
+        // scales.push(...scale) 
         positions.push(...position)
     }
 
@@ -120,23 +119,7 @@ async function loadPly(content) {
     return { positions, opacities, colors, cov3Ds }
 }
 
-// 创建一个表示绕Z轴旋转-90度的四元数
-function createRotationZQuat(angle) {
-    let halfAngle = angle / 2;
-    let sinHalfAngle = Math.sin(halfAngle);
-    let cosHalfAngle = Math.cos(halfAngle);
-    return [0, 0, sinHalfAngle, cosHalfAngle];  // [x, y, z, w]
-}
-
-// 四元数乘法
-function quatMultiply(q1, q2) {
-    return [
-        q1[3] * q2[0] + q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1], // x
-        q1[3] * q2[1] + q1[1] * q2[3] + q1[2] * q2[0] - q1[0] * q2[2], // y
-        q1[3] * q2[2] + q1[2] * q2[3] + q1[0] * q2[1] - q1[1] * q2[0], // z
-        q1[3] * q2[3] - q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2]  // w
-    ];
-}
+ 
 
 // Converts scale and rotation properties of each
 // Gaussian to a 3D covariance matrix in world space.
@@ -195,8 +178,8 @@ async function downloadPly(reader, contentLength) {
                 buffer.set(value, downloadedBytes - value.byteLength)
 
                 const progress = (downloadedBytes / contentLength) * 100
-                document.querySelector('#loading-bar').style.width = progress + '%'
-                document.querySelector('#loading-text').textContent = `Downloading 3D scene... ${progress.toFixed(2)}%`
+                //document.querySelector('#loading-bar').style.width = progress + '%'
+                document.querySelector('#loading-text').textContent = `${progress.toFixed(2)}%`
 
                 readNextChunk()
             }

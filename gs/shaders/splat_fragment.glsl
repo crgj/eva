@@ -1,7 +1,7 @@
 #version 300 es
 precision mediump float;
 
-uniform bool show_depth_map;
+uniform bool show_depth_map; 
 
 in vec3 col;
 in float scale_modif;
@@ -19,6 +19,9 @@ vec3 depth_palette(float x) {
 
 // Original CUDA implementation: https://github.com/graphdeco-inria/diff-gaussian-rasterization/blob/main/cuda_rasterizer/forward.cu#L263
 void main() {
+
+    //  
+ 
 
     // Resample using conic matrix (cf. "Surface 
     // Splatting" by Zwicker et al., 2001)

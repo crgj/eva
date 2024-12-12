@@ -7,11 +7,6 @@ class GizmoRenderer {
         this.buffer = gl.createBuffer()
 
         this.planeVertices = []
-
-        this.setPlaneVertices(  [-1,0,0],
-                                [1,0,0],
-                                [0,0,1]
-                             )
     }
 
     // Construct a plane from 3 vertices
@@ -55,9 +50,7 @@ class GizmoRenderer {
     }
 
     render() {
- 
         if (!settings.showGizmo || this.planeVertices.length === 0) return
-        
 
         gl.useProgram(this.program)
 
