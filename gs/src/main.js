@@ -128,6 +128,7 @@ async function loadScene({scene, file}) {
         scene = scene.split('(')[0].trim()
         //const url = `https://huggingface.co/kishimisu/3d-gaussian-splatting-webgl/resolve/main/${scene}.ply`
         
+        
         const url = `/ply/panda.ply`
         const response = await fetch(url)
         contentLength = parseInt(response.headers.get('content-length'))
